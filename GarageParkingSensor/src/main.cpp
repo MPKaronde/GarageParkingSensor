@@ -14,6 +14,11 @@ Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 // Create Distance Sensor object
 Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 
+// Sensor ranges
+int GREEN_LIMIT = 750;
+int YELLOW_LIMIT = 350;
+int STOOOPPPP = 150;
+
 void setup() {
   strip.begin();           // Initialize the NeoPixel strip
   strip.show();            // Turn off all LEDs initially
@@ -42,52 +47,62 @@ int distance_reading()
   return distance;
 }
 
-void loop() {
-
+bool break_time(int limit)
+{
   int distance = distance_reading();
-  if(distance == -1)
+  if(distance <= limit && distance != -1)
+  {
+    return true;
+  }
+  return false;
+}
+
+void moving_car()
+{
+  int distance = distance_reading();
+  if(distance >= GREEN_LIMIT)
   {
     for (int i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(0, 255, 0)); // Yellow
+      strip.show();
+    }
+  }
+  if(distance < GREEN_LIMIT && distance >= YELLOW_LIMIT)
+  {
+     for (int i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(220, 180, 24)); // Yellow
+      strip.show();
+    }
+  }
+  if(distance < YELLOW_LIMIT && distance >= STOOOPPPP)
+  {
+     for (int i = 0; i < strip.numPixels(); i++) {
       strip.setPixelColor(i, strip.Color(255, 0, 0)); // Red
       strip.show();
-      delay(50);
     }
   }
-  else 
+  if(distance <= STOOOPPPP)
   {
-    for (int i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, strip.Color(0, 255, 0)); // Green
+     for (int i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(255, 255, 255)); // Red
       strip.show();
-      delay(50);
     }
   }
-
 
 }
+
+void loop() {
+  moving_car();
+}
+
 /*
-  // Simple color cycle
-  for (int i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, strip.Color(255, 0, 0)); // Red
-    strip.show();
-    delay(50);
+ // no object in range
+  if(distance == -1 || distance > 1000)
+  {
+    for (int i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(0, 0, 255)); // Blue
+      strip.show();
+    }
   }
-
-  delay(500);
-
-  for (int i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, strip.Color(0, 255, 0)); // Green
-    strip.show();
-    delay(50);
-  }
-
-  delay(500);
-
-  for (int i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, strip.Color(0, 0, 255)); // Blue
-    strip.show();
-    delay(50);
-  }
-
-  delay(500);
 
 */
