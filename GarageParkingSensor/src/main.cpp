@@ -14,6 +14,13 @@ Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 // Create Distance Sensor object
 Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 
+/*
+TODO:
+-include lighting animations when on approach
+-make distance lights detect backing out as well
+-error handling to determine if bad data is being returned from sensor
+*/
+
 // Sensor ranges
 int GREEN_LIMIT = 750;
 int YELLOW_LIMIT = 350;
@@ -47,26 +54,22 @@ int distance_reading()
   return distance;
 }
 
-bool break_time(int limit)
-{
-  int distance = distance_reading();
-  if(distance <= limit && distance != -1)
-  {
-    return true;
-  }
-  return false;
-}
-
+// when we believe the car is moving
+// returns false if no longer believes car is moving (out of range or passed STOOOOPPPP)
 bool moving_car()
 {
   int distance = distance_reading();
+
+  // safe distance
   if(distance >= GREEN_LIMIT)
   {
     for (int i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, strip.Color(0, 255, 0)); // Yellow
+      strip.setPixelColor(i, strip.Color(0, 255, 0)); // Green
       strip.show();
     }
   }
+
+  // slow down distance
   if(distance < GREEN_LIMIT && distance >= YELLOW_LIMIT)
   {
      for (int i = 0; i < strip.numPixels(); i++) {
@@ -74,6 +77,8 @@ bool moving_car()
       strip.show();
     }
   }
+
+  // get ready to stop distance
   if(distance < YELLOW_LIMIT && distance >= STOOOPPPP)
   {
      for (int i = 0; i < strip.numPixels(); i++) {
@@ -81,6 +86,8 @@ bool moving_car()
       strip.show();
     }
   }
+
+  // STOOOOPPP!!!!!
   if(distance <= STOOOPPPP && distance != -1)
   {
     for(int x = 0; x < 10; x++)
@@ -96,17 +103,24 @@ bool moving_car()
       }
       delay(50);
     }
+    // assume the car has stopped
     return false;
   }
+
+  // out of range, assume there is no car
   if(distance == -1)
   {
     return false;
   }
+
+  // assume car is still moving
   return true;
 }
 
+// check if two readings are far apart enough to trigger moving car
 bool readings_differ(int readingA, int readingB)
 {
+  // special cases to check for very far vs out of range readings
   if(readingA > 1500 && readingB > 1500)
   {
     return false;
@@ -120,6 +134,7 @@ bool readings_differ(int readingA, int readingB)
     return false;
   }
 
+  // check if readings are within range
   int error = readingB - readingA;
   if(error < 0)
   {
@@ -129,14 +144,13 @@ bool readings_differ(int readingA, int readingB)
 }
 
 void loop() {
-  // wait for movement
+  // check if movement is occuring
   int readingA = distance_reading();
   delay(50);
   int readingB = distance_reading();
-
-  // make a non error prone method
   if(readings_differ(readingA, readingB))
   {
+    // assume car is still moving for time to complete loop or until otherwise signaled
     for(int i = 0; i < 150; i++)
     {
       if(!moving_car())
@@ -145,6 +159,8 @@ void loop() {
       }
     }
   }
+
+  // blue color = standby mode
   else
   {
     for (int i = 0; i < strip.numPixels(); i++) {
@@ -153,15 +169,3 @@ void loop() {
     }
   }
 }
-
-/*
- // no object in range
-  if(distance == -1 || distance > 1000)
-  {
-    for (int i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, strip.Color(0, 0, 255)); // Blue
-      strip.show();
-    }
-  }
-
-*/
