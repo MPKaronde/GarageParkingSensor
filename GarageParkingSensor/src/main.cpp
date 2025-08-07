@@ -57,7 +57,7 @@ bool break_time(int limit)
   return false;
 }
 
-void moving_car()
+bool moving_car()
 {
   int distance = distance_reading();
   if(distance >= GREEN_LIMIT)
@@ -81,18 +81,77 @@ void moving_car()
       strip.show();
     }
   }
-  if(distance <= STOOOPPPP)
+  if(distance <= STOOOPPPP && distance != -1)
   {
-     for (int i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, strip.Color(255, 255, 255)); // Red
-      strip.show();
+    for(int x = 0; x < 10; x++)
+    {
+      for (int i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, strip.Color(255, 0, 0)); // Flashing red
+        strip.show();
+      }
+      delay(50);
+      for (int i = 0; i < strip.numPixels(); i++) {
+        strip.setPixelColor(i, strip.Color(0, 0, 0)); // off
+        strip.show();
+      }
+      delay(50);
     }
+    return false;
+  }
+  if(distance == -1)
+  {
+    return false;
+  }
+  return true;
+}
+
+bool readings_differ(int readingA, int readingB)
+{
+  if(readingA > 1500 && readingB > 1500)
+  {
+    return false;
+  }
+  if(readingA > 1500 && readingB == -1)
+  {
+    return false;
+  }
+  if(readingA == -1 && readingB > 1500)
+  {
+    return false;
   }
 
+  int error = readingB - readingA;
+  if(error < 0)
+  {
+    error = -error;
+  }
+  return error > 50;
 }
 
 void loop() {
-  moving_car();
+  // wait for movement
+  int readingA = distance_reading();
+  delay(50);
+  int readingB = distance_reading();
+
+  // make a non error prone method
+  if(readings_differ(readingA, readingB))
+  {
+    for(int i = 0; i < 150; i++)
+    {
+      if(!moving_car())
+      {
+        break;
+      }
+    }
+  }
+  else
+  {
+    for (int i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, strip.Color(0, 0, 255)); // blue
+      strip.show();
+    }
+  }
 }
 
 /*
