@@ -2,6 +2,9 @@
 Class to contain ultrasonic sensor code
 */
 
+#ifndef ULTRASONIC
+#define ULTRASONIC
+
 #include <Arduino.h>
 
 class Ultrasonic
@@ -35,11 +38,20 @@ class Ultrasonic
             // read the echo pin for sound travel time
             timing = pulseIn(echoPin, HIGH);
 
+            // out of range
+            if(timing == 0){ return -1; }
+
             // calculate distance
             distance = (timing * SPEED_OF_SOUND) / 2.0;
 
             // convert to whole mm and return
             return (int)distance;
+        }
+
+        // delay for reading if readings taken in a tight loop
+        void readDelay()
+        {
+            delay(100);
         }
 
     private:
@@ -50,3 +62,5 @@ class Ultrasonic
         // speed of sound is 343000mm/s, need mm / microsecond
         const float SPEED_OF_SOUND = .343; 
 };
+
+#endif
