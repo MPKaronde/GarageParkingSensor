@@ -15,156 +15,50 @@ class Sensors {
         int get_reading()
         {
             // set up sensor arrays
-            int readings[3] = {0};                  // array of readings
+            int readings[3] = {0};                                                          // array of readings
             readings[0] = tof.get_left_reading();
             readings[1] = tof.get_right_reading();
             readings[2] = ultrasonic.takeReading();
-            bool exclude[3] = {false};              // whether to use reading at given index
+            bool exclude[3] = {false};                                                      // whether to use reading at given index
 
             // handle errors
-            int numErrors = 0;
-            for(int i = 0; i < 3; i++)
-            {
-                if(readings[i] < -1)
-                {
-                    exclude[i] = true;
-                    numErrors++;
-                }
-            }
-            // not enough readings to trust
-            if (numErrors > 1)
-            { 
-                return -2;
-            }
+            int numErrors = count_readings(readings, ERROR_READING, exclude, true);
+            if (numErrors > 1){ return ERROR_READING;}                                      // not enough readings to trust
 
             // handle out of bounds
-            int numOutOfBounds = 0;
-            for(int i = 0; i < 3; i++)
+            int numOutOfBounds = count_readings(readings, OUT_OF_RANGE, exclude, true);
+            if (numOutOfBounds == 3){ return OUT_OF_RANGE;}                                 // reading is def out of range
+            if (numOutOfBounds == 2)                                                        // maybe out of range
             {
-                if(readings[i] == -1 && exclude[i] == false)
-                {
-                    exclude[i] = true;
-                    numOutOfBounds++;
-                }
-            }
-            // def out of range
-            if (numOutOfBounds == 3)
-            {
-                return -1;
-            }
-            // maybe out of range
-            if(numOutOfBounds == 2)
-            {
-                // find the val that was in range
-                int realNum = 0;
-                for(int i = 0; i < 3; i++)
-                {
-                    if(!exclude[i] && readings[i] >= 0)
-                    {
-                        realNum = readings[i];
-                    }
-                }
-
-                // realNum is reasonable, return it
-                if(realNum > HIGH_DISTANCE)
-                {
-                    return realNum;
-                }
-                // realNum is not reasonable, return -1
-                else
-                {
-                    return -1;
-                }
+                int realNum = get_single_value(readings, exclude);                          // find the val that was in range
+                if(realNum > HIGH_DISTANCE){ return realNum; }                              // realNum is reasonable, return it
+                else{ return OUT_OF_RANGE; }                                                // realNum is not reasonable, return -1
             }
 
-            // find avg val
-            int numReadingsUsed = 0;
-            double avgReading = 0;
-            for(int i = 0; i < 3; i++)
+            // find the average of the readings
+            int avgReading = get_average(readings, exclude);
+            if (total_exclude(exclude) == 2)                                                // if only 2 vals, make sure they are within good range
             {
-                if(!exclude[i])
-                {
-                    avgReading += readings[i];
-                    numReadingsUsed++;
-                }
-            }
-            avgReading = avgReading / (double)numReadingsUsed;
-
-            // if only 2 vals, make sure they are within good range
-            if (numReadingsUsed == 2)
-            {
-                int valA = 0;
-                int valB = 0;
-                for(int i = 0; i < 3; i++)
-                {
-                    if(!exclude[i])
-                    {
-                        if(valA == 0)
-                        {
-                            valA = readings[i];
-                        }
-                        else
-                        {
-                            valB = readings[i];
-                        }
-                    }
-                }
-
-                int diff = valA - valB;
-                if(diff < 0)
-                {
-                    diff = -diff;
-                }
-                if(diff < LARGE_GAP)
-                {
-                    return avgReading;
-                }
-                return -2;  // vals are too far apart, reading cant be trusted
+                return handle_two_val_avg(readings, exclude, avgReading);
             }
 
             // all 3 vals must have been used, determine if any are out of range
             int numOff = 0;
             for (int i = 0; i < 3; i++)
             {
-                // reset exclude for use to determine if any sensor seems off
-                exclude[i] = false;
-                int diff = avgReading - readings[i];
-                if(diff < 0)
-                {
-                    diff = -diff;
-                }
-                if(diff > LARGE_GAP)
+                exclude[i] = false;                                                         // reset exclude for use to determine if any sensor seems off
+                int diff = absolute_difference(avgReading, readings[i]);
+                if(diff > LARGE_GAP)                                                        // if reading is too far from average, mark it as excluded    
                 {
                     exclude[i] = true;
                     numOff++;
                 }
             }
 
-            // valid avg calc
-            if (numOff == 0)
-            {
-                return avgReading;
-            }
-
-            // readings cant be trusted
-            if(numOff > 1)
-            {
-                return -2;
-            }
-
-            // exlcude the bad reading and recalculate
-            avgReading = 0.0;
-            for(int i = 0; i < 3; i++)
-            {
-                if(!exclude[i])
-                {
-                    avgReading += readings[i];
-                }
-            }
-            avgReading /= 2.0;
-            
-            // return final avg reading
-            return (int)avgReading;
+            if (numOff == 0){ return avgReading;}                                           // valid avg calc
+            if(numOff > 1){ return ERROR_READING;}                                          // readings cant be trusted
+            avgReading = get_average(readings, exclude);                                    // exclude the bad reading and recalculate
+            return (int)avgReading;                                                         // return final avg reading
         }
 
         // check recent history for all sensors and determine if any seems to not be working
@@ -202,6 +96,10 @@ class Sensors {
         const int HIGH_DISTANCE = 600;  // anything beyond this is considered "far"
         const int LARGE_GAP = 150;      // anything considered too far apart to be similar readings, in mm
 
+        // signal constants
+        const int ERROR_READING = -2;  // reading that indicates sensor error
+        const int OUT_OF_RANGE = -1;   // reading that indicates sensor is out of range
+
 
         // total the number of sensors with erroneous readings
         int total_bools(bool a, bool b, bool c)
@@ -222,5 +120,114 @@ class Sensors {
             return ret;
         }
 
+        // returns the absolute difference between two integers
+        int absolute_difference(int a, int b)
+        {
+            int diff = a - b;
+            if(diff < 0)
+            {
+                diff = -diff;
+            }
+            return diff;
+        }
 
+        // returns the average of the given values, excluding any that are marked as excluded
+        // returns OUT_OF_RANGE if no valid readings
+        int get_average(int vals[], bool exclude[])
+        {
+            int numReadingsUsed = 0;
+            double avgReading = 0;
+            for(int i = 0; i < 3; i++)
+            {
+                if(!exclude[i])
+                {
+                    avgReading += vals[i];
+                    numReadingsUsed++;
+                }
+            }
+            if(numReadingsUsed == 0)
+            {
+                return OUT_OF_RANGE; // no valid readings
+            }
+            return (int)(avgReading / (double)numReadingsUsed);
+        }
+
+        // returns the total number of sensors that are excluded
+        int total_exclude(bool exclude[])
+        {
+            int total = 0;
+            for(int i = 0; i < 3; i++)
+            {
+                if(exclude[i])
+                {
+                    total++;
+                }
+            }
+            return total;
+        }
+
+        // return num values in readings with given value
+        // if set_exclude is true, also mark those readings as excluded in the exclude array
+        int count_readings(int readings[], int value, bool* exclude, bool set_exclude)
+        {
+            int count = 0;
+            for(int i = 0; i < 3; i++)
+            {
+                if(readings[i] == value)
+                {
+                    count++;
+                    if(set_exclude && exclude != nullptr)
+                    {
+                        exclude[i] = true;  // mark this reading as excluded
+                    }
+                }
+            }
+            return count;
+        }
+
+        // for use when only one val is not excluded
+        // returns the value that is not excluded
+        int get_single_value(int readings[], bool exclude[])
+        {
+            for(int i = 0; i < 3; i++)
+            {
+                if(!exclude[i])
+                {
+                    return readings[i];
+                }
+            }
+            return OUT_OF_RANGE; // should never happen
+        }
+
+        // for when only two vals are used in the average calculation
+        // returns the average of the two vals if they are within a reasonable range, otherwise returns ERROR_READING
+        // assumes readings is an array of 3 values, exclude is an array of 3 bools indicating which vals to use
+        // avgReading is the average of the two vals, used to determine if they are close enough
+        // returns ERROR_READING if the two vals are too far apart, otherwise returns avgReading
+        int handle_two_val_avg(int readings[], bool exclude[], int avgReading)
+        {
+                int valA = OUT_OF_RANGE;
+                int valB = 0;
+                for(int i = 0; i < 3; i++)
+                {
+                    if(!exclude[i])
+                    {
+                        if(valA == OUT_OF_RANGE)
+                        {
+                            valA = readings[i];
+                        }
+                        else
+                        {
+                            valB = readings[i];
+                        }
+                    }
+                }
+
+                int diff = absolute_difference(valA, valB);
+                if(diff < LARGE_GAP)
+                {
+                    return avgReading;
+                }
+                return ERROR_READING;  // vals are too far apart, reading cant be trusted
+        }
 };
