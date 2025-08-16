@@ -8,7 +8,13 @@ class Sensors {
         // initialize sensors and constants, most actual setup code is handled w/in sensor constructors
         Sensors(int xshut_left, int xshut_right, int trig, int echo):  
         XSHUT_LEFT(xshut_left), XSHUT_RIGHT(xshut_right), TRIG(trig), ECHO(echo),
-        ultrasonic(echo, trig), tof(XSHUT_LEFT, XSHUT_RIGHT){}
+        ultrasonic(echo, trig), tof(XSHUT_LEFT, XSHUT_RIGHT)
+        {
+            left_tof_history = new int[HISTORY_SIZE];
+            right_tof_history = new int[HISTORY_SIZE];
+            ultrasonic_history = new int[HISTORY_SIZE];
+            decided_history = new int[HISTORY_SIZE];
+        }
 
         // take a reading from all three sensors and find a consensus to return
         // returns a distance in mm, -1 if out of range, -2 if readings cant be trusted, -3 if sensors are verified not working
@@ -88,10 +94,11 @@ class Sensors {
         bool ultrasonic_working = true;
 
         // last few readings from each sensor to diagnose issues
-        int left_tof_history[10] = {0};
-        int right_tof_history[10] = {0};
-        int ultrasonic_history[10] = {0};
-        int decided_history[10] = {0};  // last 10 readings from the consensus of all sensors
+        const int HISTORY_SIZE = 10;  // size of the history arrays
+        int* left_tof_history;
+        int* right_tof_history;
+        int* ultrasonic_history;
+        int* decided_history;   // history of decided readings
         int history_index = 0;  // index to track where to write next in the history arrays
 
         // arbitrary constants for calculations
@@ -247,7 +254,7 @@ class Sensors {
 
             // time to verify sensors 
             int ver = 0;
-            if(history_index >= 10)
+            if(history_index >= HISTORY_SIZE)
             {
                 history_index = 0;  // reset index to start of arrays
                 ver = verify_sensors();  // check if sensors are still working
