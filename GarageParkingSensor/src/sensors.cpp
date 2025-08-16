@@ -11,7 +11,7 @@ class Sensors {
         ultrasonic(echo, trig), tof(XSHUT_LEFT, XSHUT_RIGHT){}
 
         // take a reading from all three sensors and find a consensus to return
-        // returns a distance in mm, -1 if out of range, -2 if readings cant be trusted
+        // returns a distance in mm, -1 if out of range, -2 if readings cant be trusted, -3 if sensors are verified not working
         int get_reading()
         {
             // set up sensor arrays
@@ -23,23 +23,23 @@ class Sensors {
 
             // handle errors
             int numErrors = count_readings(readings, ERROR_READING, exclude, true);
-            if (numErrors > 1){ return ERROR_READING;}                                      // not enough readings to trust
+            if (numErrors > 1){ return handle_ret(readings, ERROR_READING);}                // not enough readings to trust
 
             // handle out of bounds
             int numOutOfBounds = count_readings(readings, OUT_OF_RANGE, exclude, true);
-            if (numOutOfBounds == 3){ return OUT_OF_RANGE;}                                 // reading is def out of range
+            if (numOutOfBounds == 3){ return handle_ret(readings, OUT_OF_RANGE);}           // reading is def out of range
             if (numOutOfBounds == 2)                                                        // maybe out of range
             {
                 int realNum = get_single_value(readings, exclude);                          // find the val that was in range
-                if(realNum > HIGH_DISTANCE){ return realNum; }                              // realNum is reasonable, return it
-                else{ return OUT_OF_RANGE; }                                                // realNum is not reasonable, return -1
+                if(realNum > HIGH_DISTANCE){ return handle_ret(readings, realNum); }        // realNum is reasonable, return it
+                else{ return handle_ret(readings, OUT_OF_RANGE); }                          // realNum is not reasonable, return -1
             }
 
             // find the average of the readings
             int avgReading = get_average(readings, exclude);
             if (total_exclude(exclude) == 2)                                                // if only 2 vals, make sure they are within good range
             {
-                return handle_two_val_avg(readings, exclude, avgReading);
+                return handle_ret(readings, handle_two_val_avg(readings, exclude, avgReading));
             }
 
             // all 3 vals must have been used, determine if any are out of range
@@ -55,10 +55,10 @@ class Sensors {
                 }
             }
 
-            if (numOff == 0){ return avgReading;}                                           // valid avg calc
-            if(numOff > 1){ return ERROR_READING;}                                          // readings cant be trusted
+            if (numOff == 0){ return handle_ret(readings, avgReading);}                     // valid avg calc
+            if(numOff > 1){ return handle_ret(readings, ERROR_READING);}                    // readings cant be trusted
             avgReading = get_average(readings, exclude);                                    // exclude the bad reading and recalculate
-            return (int)avgReading;                                                         // return final avg reading
+            return handle_ret(readings, avgReading);                                        // return final avg reading
         }
 
         // check recent history for all sensors and determine if any seems to not be working
@@ -91,6 +91,7 @@ class Sensors {
         int right_tof_history[10] = {0};
         int ultrasonic_history[10] = {0};
         int decided_history[10] = {0};  // last 10 readings from the consensus of all sensors
+        int history_index = 0;  // index to track where to write next in the history arrays
 
         // arbitrary constants for calculations
         const int HIGH_DISTANCE = 600;  // anything beyond this is considered "far"
@@ -229,5 +230,32 @@ class Sensors {
                     return avgReading;
                 }
                 return ERROR_READING;  // vals are too far apart, reading cant be trusted
+        }
+
+        // updates the history arrays
+        // calls verify sensors if appropriate, return -3 if sensors are not working
+        // otherwise returns whatever value is passed in
+        int handle_ret(int readings[], int ret)
+        {
+            // update history arrays
+            left_tof_history[history_index] = readings[0];
+            right_tof_history[history_index] = readings[1];
+            ultrasonic_history[history_index] = readings[2];
+            decided_history[history_index] = ret;
+            history_index++;
+
+            // time to verify sensors 
+            int ver = 0;
+            if(history_index >= 10)
+            {
+                history_index = 0;  // reset index to start of arrays
+                ver = verify_sensors();  // check if sensors are still working
+            }
+            if(ver != 0)
+            {
+                return -3;  // sensors are not working, return error code
+            }
+
+            return ret;  // return whatever value was passed in
         }
 };
