@@ -66,6 +66,7 @@ class Sensors {
         // return 0 if everything ok, 1 if a single sensor is unreliable, 2 if two or more sensors are unreliable
         int verify_sensors()
         {
+            return 0; // assume all sensors are working for now
         }
 
     private:
