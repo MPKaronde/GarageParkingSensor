@@ -72,7 +72,7 @@ class Sensors {
         // return 0 if everything ok, 1 if a single sensor is unreliable, 2 if two or more sensors are unreliable
         int verify_sensors()
         {
-            return 0; // assume all sensors are working for now
+            return 0;                                                                        // assume all sensors are working for now
         }
 
     private:
@@ -94,7 +94,7 @@ class Sensors {
         bool ultrasonic_working = true;
 
         // last few readings from each sensor to diagnose issues
-        const int HISTORY_SIZE = 10;  // size of the history arrays
+        const int HISTORY_SIZE = 10; // size of the history arrays
         int* left_tof_history;
         int* right_tof_history;
         int* ultrasonic_history;

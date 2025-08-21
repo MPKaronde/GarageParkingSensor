@@ -12,7 +12,6 @@ class TOFSensors
 
             pinMode(XSHUT_LEFT, OUTPUT);
             pinMode(XSHUT_RIGHT, OUTPUT);
-
             // turn off both sensors
             digitalWrite(XSHUT_LEFT, LOW);
             digitalWrite(XSHUT_RIGHT, LOW);
