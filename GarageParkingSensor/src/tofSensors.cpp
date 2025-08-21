@@ -35,6 +35,7 @@ class TOFSensors
             VL53L0X_RangingMeasurementData_t measure;
             leftTOF.rangingTest(&measure, false);
             if(measure.RangeStatus == 4){return -1;}    // out of range
+            if(measure.RangeMilliMeter == ALMOST_OUT_OF_RANGE){return -1;} // special case for almost out of range
             return measure.RangeMilliMeter;
         }
 
@@ -45,6 +46,7 @@ class TOFSensors
             VL53L0X_RangingMeasurementData_t measure;
             rightTOF.rangingTest(&measure, false);
             if(measure.RangeStatus == 4){return -1;}    // out of range
+            if(measure.RangeMilliMeter == ALMOST_OUT_OF_RANGE){return -1;} // special case for almost out of range
             return measure.RangeMilliMeter;
         }
 
@@ -52,6 +54,7 @@ class TOFSensors
         // sensor pins
         int XSHUT_LEFT;
         int XSHUT_RIGHT;
+        const int ALMOST_OUT_OF_RANGE = 8191; // weird value that seems to be hardcoded into the sensors?
 
         // sensor objects
         Adafruit_VL53L0X leftTOF;

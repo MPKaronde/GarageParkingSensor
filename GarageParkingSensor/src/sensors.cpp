@@ -50,10 +50,11 @@ class Sensors {
 
             // all 3 vals must have been used, determine if any are out of range
             int numOff = 0;
+            int median = get_median(readings);                                               // find the median of the readings
             for (int i = 0; i < 3; i++)
             {
                 exclude[i] = false;                                                         // reset exclude for use to determine if any sensor seems off
-                int diff = absolute_difference(avgReading, readings[i]);
+                int diff = absolute_difference(median, readings[i]);                        // use median rather than avg to prevent outliers from skewing the results
                 if(diff > LARGE_GAP)                                                        // if reading is too far from average, mark it as excluded    
                 {
                     exclude[i] = true;
@@ -73,6 +74,25 @@ class Sensors {
         int verify_sensors()
         {
             return 0;                                                                        // assume all sensors are working for now
+        }
+
+
+        /*
+        series of functions to get readings from individual sensors for debugging
+        */
+        int get_left_reading()
+        {
+            return tof.get_left_reading();
+        }
+
+        int get_right_reading()
+        {
+            return tof.get_right_reading();
+        }
+
+        int get_ultrasonic_reading()
+        {
+            return ultrasonic.takeReading();
         }
 
     private:
@@ -265,5 +285,40 @@ class Sensors {
             }
 
             return ret;  // return whatever value was passed in
+        }
+
+        // returns the median value of an array of 3 ints
+        int get_median(int vals[])
+        {
+            if(vals[0] > vals[1])
+            {
+                if(vals[0] < vals[2])
+                {
+                    return vals[0];  // vals[0] is the median
+                }
+                else if(vals[1] > vals[2])
+                {
+                    return vals[1];  // vals[1] is the median
+                }
+                else
+                {
+                    return vals[2];  // vals[2] is the median
+                }
+            }
+            else
+            {
+                if(vals[0] > vals[2])
+                {
+                    return vals[0];  // vals[0] is the median
+                }
+                else if(vals[1] < vals[2])
+                {
+                    return vals[1];  // vals[1] is the median
+                }
+                else
+                {
+                    return vals[2];  // vals[2] is the median
+                }
+            }
         }
 };
