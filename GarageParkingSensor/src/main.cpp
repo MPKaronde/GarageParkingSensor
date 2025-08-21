@@ -1,179 +1,128 @@
-// #include <Arduino.h>
-// #include <Adafruit_NeoPixel.h>
-// #include <Adafruit_VL53L0X.h>
+#include <Arduino.h>
+#include "lights.cpp"
+#include "sensors.cpp"
 
-// // Pin where the NeoPixel data line is connected
-// #define LED_PIN    18      // Use GPIO 5
+// LED constants
+#define LED_PIN    18      
+#define NUM_LEDS   32
 
-// // Number of LEDs in the grid (e.g. 8x8 = 64)
-// #define NUM_LEDS   32
+// TOF sensor constants
+#define XSHUT_LEFT 14
+#define XSHUT_RIGHT 13
 
-// /*
-// Trig = 35
-// Echo = 34
+// Ultrasonic sensor constants
+#define TRIG_PIN   4
+#define ECHO_PIN   34
 
-// Left XSHUT = 14
-// Right XSHUT = 13
-// */
+// hardware objects
+lightStrip strip(LED_PIN, NUM_LEDS);
+Sensors sensors(XSHUT_LEFT, XSHUT_RIGHT, TRIG_PIN, ECHO_PIN);
 
-// // Create NeoPixel object
-// Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+// num times we will re check error readings
+const int ERROR_RECHECKS = 3;
 
-// // Create Distance Sensor object
-// Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+/*
+Distance limits for each color
+Each color is displayed w/ sensor readings in range (previous limit, current limit]
+w/ green capped at out of range on the upper end and fast red capped at 0 on the lower end
+*/
+const int GREEN_LIMIT = 750;
+const int YELLOW_LIMIT = 350;
+const int RED_LIMIT = 150;
 
-// /*
-// TODO:
-// -include lighting animations when on approach
-// -make distance lights detect backing out as well
-// -error handling to determine if bad data is being returned from sensor
-// */
+// used to determine if car is moving
+int prev_reading = 0;
+const int MOVEMENT_THRESHOLD = 20; // difference in readings to consider movement
 
-// // Sensor ranges
-// int GREEN_LIMIT = 750;
-// int YELLOW_LIMIT = 350;
-// int STOOOPPPP = 150;
+// setup code
+void setup()
+{
+    Serial.begin(115200);
+    delay(1000); // Allow time for serial to initialize
+}
 
-// void setup() {
-//   strip.begin();           // Initialize the NeoPixel strip
-//   strip.show();            // Turn off all LEDs initially
-//   strip.setBrightness(50); // Optional: set brightness (0–255)
-//   Serial.begin(115200);
+// determine if the car is moving based on difference between prev and current reading
+// return true if moving, false if not
+bool car_moving(int current_reading)
+{
 
-//   // wait for the VL53L0X to be ready
-//   if (!lox.begin()) {
-//     Serial.println("Failed to find VL53L0X chip");
-//     while (1);
-//   }
-// }
+    int old_prev = prev_reading; // save old previous reading
+    prev_reading = current_reading; // update previous reading
 
-// // take a reading from the sensor
-// int distance_reading()
-// {
-//   // read distance from sensor
-//   VL53L0X_RangingMeasurementData_t measure;
-//   lox.rangingTest(&measure, false);
+    // out of range special cases
+    if(old_prev == -1 && current_reading != -1)
+    {
+        return true;
+    }
+    if (current_reading == -1 && old_prev != -1)
+    {
+        return true;
+    }
+    if(old_prev == -1 && current_reading == -1)
+    {
+        return false;
+    }
+   
 
-//   int distance = measure.RangeMilliMeter;
-//   if (measure.RangeStatus == 4) { // make sure reading in range
-//     distance = -1;
-//   }
+    // check if the car is moving based on the difference from the previous reading
+    if (abs(current_reading - old_prev) > MOVEMENT_THRESHOLD) {
+        return true;
+    }
+    return false;
+}
 
-//   return distance;
-// }
+void main()
+{
+    // get current reading
+    int reading = sensors.get_reading();
 
-// // when we believe the car is moving
-// // returns false if no longer believes car is moving (out of range or passed STOOOOPPPP)
-// bool moving_car()
-// {
-//   int distance = distance_reading();
+    /*
+    Look for consistent error (as opposed to occasional sensor glitches) and signal error if needed
+    */
+    int i = 0;
+    while(reading == -2 && i < ERROR_RECHECKS) // recheck reading if error
+    {
+        delay(250); // wait before rechecking
+        reading = sensors.get_reading();
+        i++;
+    }
+    if(reading == -2)
+    {
+        strip.slow_flash_blue(); // indicate error with slow flashing blue
+        Serial.println("Error reading sensors, please check connections.");
+        return; // exit if still error after rechecks
+    }
+    
+    // print reading to serial for debugging
+    Serial.println("Decided reading: " + String(reading));
 
-//   // safe distance
-//   if(distance >= GREEN_LIMIT)
-//   {
-//     for (int i = 0; i < strip.numPixels(); i++) {
-//       strip.setPixelColor(i, strip.Color(0, 255, 0)); // Green
-//       strip.show();
-//     }
-//   }
+    // determine if car is moving
+    bool moving = car_moving(reading);
 
-//   // slow down distance
-//   if(distance < GREEN_LIMIT && distance >= YELLOW_LIMIT)
-//   {
-//      for (int i = 0; i < strip.numPixels(); i++) {
-//       strip.setPixelColor(i, strip.Color(220, 180, 24)); // Yellow
-//       strip.show();
-//     }
-//   }
-
-//   // get ready to stop distance
-//   if(distance < YELLOW_LIMIT && distance >= STOOOPPPP)
-//   {
-//      for (int i = 0; i < strip.numPixels(); i++) {
-//       strip.setPixelColor(i, strip.Color(255, 0, 0)); // Red
-//       strip.show();
-//     }
-//   }
-
-//   // STOOOOPPP!!!!!
-//   if(distance <= STOOOPPPP && distance != -1)
-//   {
-//     for(int x = 0; x < 10; x++)
-//     {
-//       for (int i = 0; i < strip.numPixels(); i++) {
-//         strip.setPixelColor(i, strip.Color(255, 0, 0)); // Flashing red
-//         strip.show();
-//       }
-//       delay(50);
-//       for (int i = 0; i < strip.numPixels(); i++) {
-//         strip.setPixelColor(i, strip.Color(0, 0, 0)); // off
-//         strip.show();
-//       }
-//       delay(50);
-//     }
-//     // assume the car has stopped
-//     return false;
-//   }
-
-//   // out of range, assume there is no car
-//   if(distance == -1)
-//   {
-//     return false;
-//   }
-
-//   // assume car is still moving
-//   return true;
-// }
-
-// // check if two readings are far apart enough to trigger moving car
-// bool readings_differ(int readingA, int readingB)
-// {
-//   // special cases to check for very far vs out of range readings
-//   if(readingA > 1500 && readingB > 1500)
-//   {
-//     return false;
-//   }
-//   if(readingA > 1500 && readingB == -1)
-//   {
-//     return false;
-//   }
-//   if(readingA == -1 && readingB > 1500)
-//   {
-//     return false;
-//   }
-
-//   // check if readings are within range
-//   int error = readingB - readingA;
-//   if(error < 0)
-//   {
-//     error = -error;
-//   }
-//   return error > 50;
-// }
-
-// void loop() {
-//   // check if movement is occuring
-//   int readingA = distance_reading();
-//   delay(50);
-//   int readingB = distance_reading();
-//   if(readings_differ(readingA, readingB))
-//   {
-//     // assume car is still moving for time to complete loop or until otherwise signaled
-//     for(int i = 0; i < 150; i++)
-//     {
-//       if(!moving_car())
-//       {
-//         break;
-//       }
-//     }
-//   }
-
-//   // blue color = standby mode
-//   else
-//   {
-//     for (int i = 0; i < strip.numPixels(); i++) {
-//       strip.setPixelColor(i, strip.Color(0, 0, 255)); // blue
-//       strip.show();
-//     }
-//   }
-// }
+    // decide appopriate light pattern based on reading and movement
+    if(!moving)
+    {
+        strip.static_blue();
+        return;
+    }
+    if(reading >= GREEN_LIMIT || reading == -1)
+    {
+        strip.slow_flash_green();
+        return;
+    }
+    if(reading < GREEN_LIMIT && reading >= YELLOW_LIMIT)
+    {
+        strip.moderate_flash_yellow();
+        return;
+    }
+    if(reading < YELLOW_LIMIT && reading >= RED_LIMIT)
+    {
+        strip.slow_flash_red();
+        return;
+    }
+    if(reading < RED_LIMIT && reading >= 0)
+    {
+        strip.fast_flash_red();
+        return;
+    }
+}

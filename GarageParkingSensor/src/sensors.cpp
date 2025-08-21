@@ -76,6 +76,12 @@ class Sensors {
             return 0;                                                                        // assume all sensors are working for now
         }
 
+        // for when other code members need this constant
+        int get_high_distance()
+        {
+            return HIGH_DISTANCE;
+        }
+
 
         /*
         series of functions to get readings from individual sensors for debugging
