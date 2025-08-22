@@ -8,6 +8,18 @@ class to wrap the functionality of the signal light strip
 class lightStrip
 {
     public:
+
+        // Flashing delays in milliseconds
+        const int slow_flash_delay = 250;
+        const int moderate_flash_delay = 100;
+        const int fast_flash_delay = 50;
+        int MAX_DISTANCE = 800; // max distance to show on bar graph
+
+        int blue[3] = {0, 0, 255};
+        int green[3] = {0, 255, 0};
+        int yellow[3] = {250, 240, 94};
+        int red[3] = {255, 0, 0};
+
         // Constructor: initializes the NeoPixel strip with the given pin and number of LEDs
         lightStrip(int ledPin, int numLeds): 
         strip(numLeds, ledPin, NEO_GRB + NEO_KHZ800)
@@ -55,6 +67,50 @@ class lightStrip
             }
             strip.show();
             delay(slow_flash_delay);
+        }
+
+
+        void color_move(int color[3], int delay_ms, int tail_size)
+        {
+            int center_high = NUM_LEDS / 2;
+            int center_low = center_high - 1;
+
+            for(int i = 0; i < center_high; i++)
+            {
+                int tail = i - tail_size;
+                if(tail < 0)
+                {
+                    tail = NUM_LEDS - tail;
+                }
+
+                strip.setPixelColor(center_low - i, strip.Color(color[0], color[1], color[2]));
+                strip.setPixelColor(center_high + i, strip.Color(color[0], color[1], color[2]));
+
+                strip.setPixelColor(center_low - tail, strip.Color(0, 0, 0));
+                strip.setPixelColor(center_high + tail, strip.Color(0, 0, 0));
+                strip.show();
+
+                delay(delay_ms);
+            }
+
+            // // turn on lights
+            // for(int i = 0; i < center_high; i++)
+            // {
+            //     strip.setPixelColor(center_low - i, strip.Color(color[0], color[1], color[2]));
+            //     strip.setPixelColor(center_high + i, strip.Color(color[0], color[1], color[2]));
+            //     strip.show();
+            //     delay(delay_ms);
+            // }
+
+            // // turn off lights
+            // for(int i = 0; i < center_high; i++)
+            // {
+            //     strip.setPixelColor(center_low - i, strip.Color(0, 0, 0));
+            //     strip.setPixelColor(center_high + i, strip.Color(0, 0, 0));
+            //     strip.show();
+            //     delay(delay_ms);
+            // }
+
         }
 
         // moderately flashing yellow for car approaching
@@ -107,9 +163,4 @@ class lightStrip
         int LED_PIN; // pin where the NeoPixel data line is connected
         int NUM_LEDS; // number of LEDs in the strip
         Adafruit_NeoPixel strip; // NeoPixel object
-
-        // Flashing delays in milliseconds
-        const int slow_flash_delay = 250;
-        const int moderate_flash_delay = 100;
-        const int fast_flash_delay = 50;
 };

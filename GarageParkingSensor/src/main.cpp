@@ -27,8 +27,8 @@ Each color is displayed w/ sensor readings in range (previous limit, current lim
 w/ green capped at out of range on the upper end and fast red capped at 0 on the lower end
 */
 const int GREEN_LIMIT = 800;
-const int YELLOW_LIMIT = 450;
-const int RED_LIMIT = 200;
+const int YELLOW_LIMIT = 500;
+const int RED_LIMIT = 250;
 
 // used to determine if car is moving
 int prev_reading = 0;
@@ -83,6 +83,55 @@ bool car_moving(int current_reading)
     return false;
 }
 
+// version to just light and flash the lights based on distance
+void static_color_effects(int reading)
+{
+    if(reading >= GREEN_LIMIT || reading == -1)
+    {
+        strip->slow_flash_green();
+        return;
+    }
+    if(reading < GREEN_LIMIT && reading >= YELLOW_LIMIT)
+    {
+        strip->slow_flash_yellow();
+        return;
+    }
+    if(reading < YELLOW_LIMIT && reading >= RED_LIMIT)
+    {
+        strip->moderate_flash_red();
+        return;
+    }
+    if(reading < RED_LIMIT && reading >= 0)
+    {
+        strip->fast_flash_red();
+        return;
+    }
+}
+
+void fly_out_effect(int reading)
+{
+    if(reading >= GREEN_LIMIT || reading == -1)
+    {
+        strip->color_move(strip->green, 30, 5);
+        return;
+    }
+    if(reading < GREEN_LIMIT && reading >= YELLOW_LIMIT)
+    {
+        strip->color_move(strip->yellow, 20, 4);
+        return;
+    }
+    if(reading < YELLOW_LIMIT && reading >= RED_LIMIT)
+    {
+        strip->color_move(strip->red, 10, 3);
+        return;
+    }
+    if(reading < RED_LIMIT && reading >= 0)
+    {
+        strip->fast_flash_red();
+        return;
+    }
+}
+
 void loop()
 {
     // get current reading
@@ -123,26 +172,10 @@ void loop()
         strip->static_blue();
         return;
     }
-    if(reading >= GREEN_LIMIT || reading == -1)
-    {
-        strip->slow_flash_green();
-        return;
-    }
-    if(reading < GREEN_LIMIT && reading >= YELLOW_LIMIT)
-    {
-        strip->slow_flash_yellow();
-        return;
-    }
-    if(reading < YELLOW_LIMIT && reading >= RED_LIMIT)
-    {
-        strip->moderate_flash_red();
-        return;
-    }
-    if(reading < RED_LIMIT && reading >= 0)
-    {
-        strip->fast_flash_red();
-        return;
-    }
+    fly_out_effect(reading);
+
 
     delay(100);
+
+    //strip->color_move(strip->green, 50, 5);
 }
