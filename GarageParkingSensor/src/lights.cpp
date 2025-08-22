@@ -58,22 +58,22 @@ class lightStrip
         }
 
         // moderately flashing yellow for car approaching
-        void moderate_flash_yellow()
+        void slow_flash_yellow()
         {
             for (int i = 0; i < NUM_LEDS; i++) {
-                strip.setPixelColor(i, strip.Color(255, 255, 0)); // yellow
+                strip.setPixelColor(i, strip.Color(250, 240, 94)); // yellow
             }
             strip.show();
-            delay(moderate_flash_delay);
+            delay(slow_flash_delay);
             for (int i = 0; i < NUM_LEDS; i++) {
                 strip.setPixelColor(i, strip.Color(0, 0, 0)); // off
             }
             strip.show();
-            delay(moderate_flash_delay);
+            delay(slow_flash_delay);
         }
 
         // moderate flashing red for good car position
-        void slow_flash_red()
+        void moderate_flash_red()
         {
             for (int i = 0; i < NUM_LEDS; i++) {
                 strip.setPixelColor(i, strip.Color(255, 0, 0)); // red

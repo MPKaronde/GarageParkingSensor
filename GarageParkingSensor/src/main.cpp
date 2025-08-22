@@ -26,9 +26,9 @@ Distance limits for each color
 Each color is displayed w/ sensor readings in range (previous limit, current limit]
 w/ green capped at out of range on the upper end and fast red capped at 0 on the lower end
 */
-const int GREEN_LIMIT = 750;
-const int YELLOW_LIMIT = 350;
-const int RED_LIMIT = 150;
+const int GREEN_LIMIT = 800;
+const int YELLOW_LIMIT = 450;
+const int RED_LIMIT = 200;
 
 // used to determine if car is moving
 int prev_reading = 0;
@@ -40,10 +40,10 @@ void setup()
     strip = new lightStrip(LED_PIN, NUM_LEDS); // Initialize light strip with pin and number of LEDs
 
     Serial.begin(115200);
-    delay(10000); // Allow time for serial to initialize
+    delay(100); // Allow time for serial to initialize
 
     Serial.println("Starting Garage Parking Sensor...");
-    delay(10000);
+    delay(100);
     sensors = new Sensors(XSHUT_LEFT, XSHUT_RIGHT, TRIG_PIN, ECHO_PIN); // Initialize sensors with pin numbers
 }
 
@@ -68,6 +68,12 @@ bool car_moving(int current_reading)
     {
         return false;
     }
+
+    int diff = abs(current_reading - old_prev);
+    if(diff > 300) // if difference is too large, likely a glitch
+    {
+        return false;
+    }
    
 
     // check if the car is moving based on the difference from the previous reading
@@ -88,6 +94,7 @@ void loop()
     int i = 0;
     while(reading == -2 && i < ERROR_RECHECKS) // recheck reading if error
     {
+        Serial.println("Error reading sensors, rechecking...");
         delay(250); // wait before rechecking
         reading = sensors->get_reading();
         i++;
@@ -98,12 +105,17 @@ void loop()
         Serial.println("Error reading sensors, please check connections.");
         return; // exit if still error after rechecks
     }
-    
-    // print reading to serial for debugging
-    Serial.println("Decided reading: " + String(reading));
 
+    if (reading > 5000) // sanity check
+    {
+        reading = -1; // set to out of range if too high
+    }
+    
     // determine if car is moving
     bool moving = car_moving(reading);
+    // print reading to serial for debugging
+    Serial.println("Decided reading: " + String(reading) + " Car Moving: " + String(moving));
+
 
     // decide appopriate light pattern based on reading and movement
     if(!moving)
@@ -118,12 +130,12 @@ void loop()
     }
     if(reading < GREEN_LIMIT && reading >= YELLOW_LIMIT)
     {
-        strip->moderate_flash_yellow();
+        strip->slow_flash_yellow();
         return;
     }
     if(reading < YELLOW_LIMIT && reading >= RED_LIMIT)
     {
-        strip->slow_flash_red();
+        strip->moderate_flash_red();
         return;
     }
     if(reading < RED_LIMIT && reading >= 0)
@@ -131,4 +143,6 @@ void loop()
         strip->fast_flash_red();
         return;
     }
+
+    delay(100);
 }
