@@ -21,12 +21,16 @@ Sensors *sensors{};
 // num times we will re check error readings
 const int ERROR_RECHECKS = 3;
 
+int stop_check = 0; // number of consecutive stopped readings, reset to 0 when movement detected
+const int STOP_CAP = 4; // number of consecutive stopped readings to set sensor to stopped
+int last_move_reading = 0; // last reading where vehicle was moving
+
 /*
 Distance limits for each color
 Each color is displayed w/ sensor readings in range (previous limit, current limit]
 w/ green capped at out of range on the upper end and fast red capped at 0 on the lower end
 */
-const int GREEN_LIMIT = 800;
+const int GREEN_LIMIT = 1000;
 const int YELLOW_LIMIT = 500;
 const int RED_LIMIT = 250;
 
@@ -117,17 +121,20 @@ void fly_out_effect(int reading)
     }
     if(reading < GREEN_LIMIT && reading >= YELLOW_LIMIT)
     {
-        strip->color_move(strip->yellow, 20, 4);
+        strip->color_move(strip->yellow, 30, 5);
         return;
     }
     if(reading < YELLOW_LIMIT && reading >= RED_LIMIT)
     {
-        strip->color_move(strip->red, 10, 3);
+        strip->color_move(strip->red, 30, 5);
         return;
     }
     if(reading < RED_LIMIT && reading >= 0)
     {
+        // go twice to make it go longer
         strip->fast_flash_red();
+        strip->fast_flash_red();
+        strip->moderate_flash_red();
         return;
     }
 }
@@ -161,7 +168,27 @@ void loop()
     }
     
     // determine if car is moving
-    bool moving = car_moving(reading);
+    bool move_check = car_moving(reading);
+    bool moving = true;
+    if(!move_check)
+    {
+        stop_check++;
+
+        if(stop_check > STOP_CAP) // has been stopped long enough, display stop graphic
+        {
+            moving = false;
+        }
+        else    // hasnt been stopped long enough, display last relevant moving graphic
+        {
+            reading = last_move_reading;
+        }
+    }
+    else
+    {
+        stop_check = 0;
+        last_move_reading = reading;
+    }
+
     // print reading to serial for debugging
     Serial.println("Decided reading: " + String(reading) + " Car Moving: " + String(moving));
 

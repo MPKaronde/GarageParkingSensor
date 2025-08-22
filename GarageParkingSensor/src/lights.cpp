@@ -93,23 +93,16 @@ class lightStrip
                 delay(delay_ms);
             }
 
-            // // turn on lights
-            // for(int i = 0; i < center_high; i++)
-            // {
-            //     strip.setPixelColor(center_low - i, strip.Color(color[0], color[1], color[2]));
-            //     strip.setPixelColor(center_high + i, strip.Color(color[0], color[1], color[2]));
-            //     strip.show();
-            //     delay(delay_ms);
-            // }
-
-            // // turn off lights
-            // for(int i = 0; i < center_high; i++)
-            // {
-            //     strip.setPixelColor(center_low - i, strip.Color(0, 0, 0));
-            //     strip.setPixelColor(center_high + i, strip.Color(0, 0, 0));
-            //     strip.show();
-            //     delay(delay_ms);
-            // }
+            // 🧹 Clean up: turn off remaining tail pixels at the end
+            for (int i = center_high - tail_size; i < center_high; i++)
+            {
+                if (i >= 0)
+                {
+                    strip.setPixelColor(center_low - i, strip.Color(0, 0, 0));
+                    strip.setPixelColor(center_high + i, strip.Color(0, 0, 0));
+                }
+            }
+            strip.show();
 
         }
 
