@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_task_wdt.h>
 #include "lights.cpp"
 #include "sensors.cpp"
 
@@ -21,7 +22,7 @@ Sensors *sensors{};
 // num times we will re check error readings
 const int ERROR_RECHECKS = 3;
 
-int stop_check = 0; // number of consecutive stopped readings, reset to 0 when movement detected
+unsigned int stop_check = 0; // number of consecutive stopped readings, reset to 0 when movement detected
 const int STOP_CAP = 4; // number of consecutive stopped readings to set sensor to stopped
 int last_move_reading = 0; // last reading where vehicle was moving
 
@@ -49,6 +50,10 @@ void setup()
     Serial.println("Starting Garage Parking Sensor...");
     delay(100);
     sensors = new Sensors(XSHUT_LEFT, XSHUT_RIGHT, TRIG_PIN, ECHO_PIN); // Initialize sensors with pin numbers
+
+    // watchdog setup
+    esp_task_wdt_init(10, true); // 10 second timeout, panic=true
+    esp_task_wdt_add(NULL);      // Add current task to watchdog
 }
 
 // determine if the car is moving based on difference between prev and current reading
@@ -173,6 +178,10 @@ void loop()
     if(!move_check)
     {
         stop_check++;
+        if(stop_check > 10000) // prevent overflow
+        {
+            stop_check = STOP_CAP + 1; // cap it to avoid overflow
+        }
 
         if(stop_check > STOP_CAP) // has been stopped long enough, display stop graphic
         {
@@ -189,8 +198,16 @@ void loop()
         last_move_reading = reading;
     }
 
+
     // print reading to serial for debugging
-    Serial.println("Decided reading: " + String(reading) + " Car Moving: " + String(moving));
+    bool debug = true;
+    if(debug){
+        Serial.println("Decided reading: " + String(reading) + " Car Moving: " + String(moving));
+        Serial.println("Left TOF: " + String(sensors->get_left_reading()) + "\n"
+                       " Right TOF: " + String(sensors->get_right_reading()) + "\n"
+                       " Ultrasonic: " + String(sensors->get_ultrasonic_reading()));
+    }
+
 
 
     // decide appopriate light pattern based on reading and movement
@@ -201,8 +218,9 @@ void loop()
     }
     fly_out_effect(reading);
 
+    
+    esp_task_wdt_reset(); // Reset watchdog at the end of each loop
 
     delay(100);
 
-    //strip->color_move(strip->green, 50, 5);
 }
