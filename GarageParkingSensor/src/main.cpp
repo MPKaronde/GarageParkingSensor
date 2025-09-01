@@ -52,7 +52,7 @@ void setup()
     sensors = new Sensors(XSHUT_LEFT, XSHUT_RIGHT, TRIG_PIN, ECHO_PIN); // Initialize sensors with pin numbers
 
     // watchdog setup
-    esp_task_wdt_init(10, true); // 10 second timeout, panic=true
+    esp_task_wdt_init(20, true); // 10 second timeout, panic=true
     esp_task_wdt_add(NULL);      // Add current task to watchdog
 }
 
@@ -146,6 +146,7 @@ void fly_out_effect(int reading)
 
 void loop()
 {
+    esp_task_wdt_reset(); // Reset watchdog at the end of each loop
     // get current reading
     int reading = sensors->get_reading();
 
@@ -200,7 +201,7 @@ void loop()
 
 
     // print reading to serial for debugging
-    bool debug = true;
+    bool debug = false;
     if(debug){
         Serial.println("Decided reading: " + String(reading) + " Car Moving: " + String(moving));
         Serial.println("Left TOF: " + String(sensors->get_left_reading()) + "\n"
@@ -217,9 +218,6 @@ void loop()
         return;
     }
     fly_out_effect(reading);
-
-    
-    esp_task_wdt_reset(); // Reset watchdog at the end of each loop
 
     delay(100);
 
